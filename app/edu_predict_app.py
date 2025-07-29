@@ -7,7 +7,9 @@ import plotly.graph_objects as go
 from streamlit_lottie import st_lottie
 import requests
 from datetime import datetime
-import time
+import os
+IS_CLOUD = "streamlit" in os.environ.get("SERVER_SOFTWARE", "").lower()
+
 
 st.set_page_config(
     page_title="EduPredict - Academic Success Predictor", 
@@ -331,7 +333,12 @@ if st.session_state.logged_in:
             st.markdown("#### 🔹 Enrollment Count by Course")
             fig_course = px.histogram(df, x="Course", color="Grade", barmode="group")
             st.plotly_chart(fig_course, use_container_width=True)
-            st.download_button("📥 Download Enrollment Chart", fig_course.to_image(format="png"), file_name="course_chart.png")
+
+            if not IS_CLOUD:
+                img_bytes = fig_course.to_image(format="png")
+                st.download_button("📥 Download Enrollment Chart", img_bytes, file_name="course_chart.png")
+            else:
+                st.info("📥 Chart downloads only available in local environment.")
 
             st.markdown("#### 🔹 Dropout Ratio by Age Group")
             df["Age Group"] = pd.cut(df["Age at enrollment"], bins=[16, 20, 25, 30, 40, 60],
