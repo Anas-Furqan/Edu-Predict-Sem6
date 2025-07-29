@@ -106,14 +106,7 @@ EduPredict_Project/
 
 ## 📸 Dashboard Preview (Screenshots)
 
-Attach visuals if using `.docx` or in submission PDF:
-
-- Dashboard UI
-- Role-based login
-- Predict outcome
-- Advanced analytics charts
-- Report download
-- Feedback form
+see assets/screenshots for screenshots
 
 ---
 
