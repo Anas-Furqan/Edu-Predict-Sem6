@@ -8,16 +8,6 @@ from streamlit_lottie import st_lottie
 import requests
 from datetime import datetime
 import time
-import socket
-
-def is_localhost():
-    try:
-        hostname = socket.gethostname()
-        local_ip = socket.gethostbyname(hostname)
-
-        return local_ip.startswith("127.") or local_ip.startswith("192.168.") or local_ip == "localhost"
-    except:
-        return False
 
 
 st.set_page_config(
@@ -342,10 +332,7 @@ if st.session_state.logged_in:
             st.markdown("#### 🔹 Enrollment Count by Course")
             fig_course = px.histogram(df, x="Course", color="Grade", barmode="group")
             st.plotly_chart(fig_course, use_container_width=True)
-            if is_localhost():
-                st.download_button("📥 Download Enrollment Chart", fig_course.to_image(format="png"), file_name="course_chart.png")
-            else:
-                st.info("📥 Chart downloads are only available in the local version.")
+            # st.download_button("📥 Download Enrollment Chart", fig_course.to_image(format="png"), file_name="course_chart.png")
 
             st.markdown("#### 🔹 Dropout Ratio by Age Group")
             df["Age Group"] = pd.cut(df["Age at enrollment"], bins=[16, 20, 25, 30, 40, 60],
@@ -354,10 +341,7 @@ if st.session_state.logged_in:
             fig_age = px.bar(x=dropout_by_age.index, y=dropout_by_age.values * 100,
                      labels={"x": "Age Group", "y": "Dropout %"}, title="Dropout Percentage by Age Group")
             st.plotly_chart(fig_age, use_container_width=True)
-            if is_localhost():
-                st.download_button("📥 Download Dropout Chart", fig_age.to_image(format="png"), file_name="dropout_age_chart.png")
-            else:
-                st.info("📥 Chart downloads are only available in the local version.")
+            # st.download_button("📥 Download Dropout Chart", fig_age.to_image(format="png"), file_name="dropout_age_chart.png")
 
             st.markdown("#### 🔹 Average Grade by Scholarship Status")
             df["Scholarship Label"] = df["Scholarship holder"].map({1: "Yes", 0: "No"})
@@ -367,19 +351,13 @@ if st.session_state.logged_in:
                                                                    "Curricular units 2nd sem (grade)"],
                          barmode="group", title="Average Grades: Scholarship vs Non-Scholarship")
             st.plotly_chart(fig_scholar, use_container_width=True)
-            if is_localhost():
-                st.download_button("📥 Download Scholarship Chart", fig_scholar.to_image(format="png"), file_name="scholarship_chart.png")
-            else:
-                st.info("📥 Chart downloads are only available in the local version.")
+            # st.download_button("📥 Download Scholarship Chart", fig_scholar.to_image(format="png"), file_name="scholarship_chart.png")
 
             st.markdown("#### 🔹 Impact of GDP on Admission Grades")
             fig_gdp = px.scatter(df, x="GDP", y="Admission grade", color="Grade",
                          title="GDP vs Admission Grade", trendline="ols")
             st.plotly_chart(fig_gdp, use_container_width=True)
-            if is_localhost():
-                st.download_button("📥 Download GDP Chart", fig_gdp.to_image(format="png"), file_name="gdp_chart.png")
-            else:
-                st.info("📥 Chart downloads are only available in the local version.")
+            # st.download_button("📥 Download GDP Chart", fig_gdp.to_image(format="png"), file_name="gdp_chart.png")            
 
         st.markdown("---")
         if role == "Student":
