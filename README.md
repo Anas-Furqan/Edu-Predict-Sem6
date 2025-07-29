@@ -12,11 +12,18 @@ EduPredict_Project/
 ├── app/
 │   └── edu_predict_app.py
 ├── data/
+│   ├── academic_raw.csv
 │   └── academic_cleaned.csv
 ├── models/
 │   ├── rf_model.pkl
 │   ├── anomaly_model.pkl
 │   └── trend_model.pkl
+├── notebooks/
+│   ├── EDA.ipynb
+│   └── Modeling.ipynb
+├── reports/
+│   ├── EDA_Report.html
+│   └── model_comparison.csv
 ├── assets/
 │   ├── flowchart.png
 │   └── dfd_level0.png
@@ -113,7 +120,7 @@ Attach visuals if using `.docx` or in submission PDF:
 ## 📥 Feedback Integration
 
 Google Form is integrated for collecting feedback: 
-🔗 **[Submit Feedback Here](https://forms.google.com/your-feedback-link)**
+🔗 **[Submit Feedback Here](https://forms.gle/Am71U3oEjHG42sJ59)**
 
 ---
 
