@@ -1,6 +1,6 @@
 # 🎓 EduPredict - Academic Success Predictor
 
-**EduPredict** is an AI-powered academic performance prediction dashboard that helps identify students at risk of dropout or underperformance using machine learning and interactive visualizations.
+**EduPredict** is an AI-powered academic performance prediction dashboard that helps identify students at risk of dropout or underperformance using tuned machine learning models and rich, interactive visualizations.
 
 ---
 
@@ -15,18 +15,29 @@ EduPredict_Project/
 │   ├── academic_raw.csv
 │   └── academic_cleaned.csv
 ├── models/
-│   ├── rf_model.pkl
-│   ├── anomaly_model.pkl
-│   └── trend_model.pkl
+│   ├── rf_model.pkl                         # Baseline classifier (fallback)
+│   ├── tuned_logistic_regression_model.pkl  # Tuned classifier
+│   ├── tuned_random_forest_model.pkl        # Tuned classifier (often best)
+│   ├── tuned_xgboost_model.pkl              # Tuned classifier
+│   ├── anomaly_model.pkl                    # Isolation Forest (outlier detection)
+│   └── trend_model.pkl                      # Trend model (Sem-2 prediction)
 ├── notebooks/
 │   ├── EDA.ipynb
 │   └── Modeling.ipynb
 ├── reports/
 │   ├── EDA_Report.html
-│   └── model_comparison.csv
+│   ├── model_comparison.csv
+│   └── model_comparison_tuned.csv           # Used to auto-pick best tuned model
 ├── assets/
-│   ├── flowchart.png
-│   └── dfd_level0.png
+│   ├── flowchart.svg
+│   ├── dfd_level0.svg
+│   └── screenshots/
+│       ├── 01_Login_Form.png
+│       ├── 02_Prediction_Form.png
+│       ├── 03_Prediction_Output.png
+│       ├── 04_Downloaded_Report.png
+│       ├── 05_Advance_Charts.png
+│       └── 06_Feedback_Section.png
 ├── requirements.txt
 └── README.md
 ```
@@ -37,9 +48,17 @@ EduPredict_Project/
 
 - 🔐 Role-based Login (Student / Teacher / Counselor)
 - 🔮 Predict Academic Status: Dropout / Enrolled / Graduate
+- 🤖 Tuned models auto-selected by best F1 (from `reports/model_comparison_tuned.csv`)
+- ⚙️ Optional Advanced model selector (hidden unless multiple models exist)
 - 🚨 Anomaly Detection (Isolation Forest)
 - 📈 Semester Grade Forecasting (Trend Prediction)
 - 📊 Interactive Visualizations and Advanced Analytics
+  - Correlation heatmap (numeric features)
+  - 3D performance scatter (Admission vs Sem-1 vs Sem-2)
+  - Dropout heatmap by Age Group × Scholarship
+  - Normalized stacked bar of Grade distribution by Course
+  - Violin plot of Admission grade by Outcome
+  - Parallel categories: Gender → Scholarship → Outcome
 - 📄 Report Download as TXT
 - 📬 Google Form Feedback Integration
 - ✨ Modern UI Styling (Streamlit + CSS + Animations)
@@ -48,11 +67,11 @@ EduPredict_Project/
 
 ## 🧠 Machine Learning Models Used
 
-| Purpose                | Model Used           |
-|------------------------|----------------------|
-| Academic Status        | Random Forest        |
-| Anomaly Detection      | Isolation Forest     |
-| Grade Trend Prediction | Linear Regression    |
+| Purpose                | Model Used (Deployed)                           |
+|------------------------|--------------------------------------------------|
+| Academic Status        | Tuned RF / Tuned LR / Tuned XGBoost (auto-best) |
+| Anomaly Detection      | Isolation Forest                                 |
+| Grade Trend Prediction | Linear Regression                                |
 
 ---
 
@@ -92,6 +111,11 @@ EduPredict_Project/
    pip install -r requirements.txt
    ```
 
+   If you plan to export charts as PNG from the app, also install:
+   ```bash
+   pip install kaleido
+   ```
+
 3. **Run the Streamlit app:**
    ```bash
    streamlit run app/edu_predict_app.py
@@ -106,7 +130,7 @@ EduPredict_Project/
 
 ## 📸 Dashboard Preview (Screenshots)
 
-see assets/screenshots for screenshots
+See `assets/screenshots` for screenshots
 
 ---
 
@@ -121,6 +145,7 @@ Google Form is integrated for collecting feedback:
 
 - ✅ Cleaned Dataset
 - ✅ Trained Models (.pkl)
+- ✅ Tuned Model Comparison (`reports/model_comparison_tuned.csv`)
 - ✅ Full Dashboard Code
 - ✅ Flowchart & DFD Diagrams
 - ✅ Feedback Integration
