@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import joblib
+import os
 import plotly.express as px
 import plotly.graph_objects as go
 from streamlit_lottie import st_lottie
@@ -179,10 +180,56 @@ if st.session_state.logged_in:
 
     try:
         df = pd.read_csv("data/academic_cleaned.csv")
-        model = joblib.load("models/rf_model.pkl")
         anomaly_model = joblib.load("models/anomaly_model.pkl")
         trend_model = joblib.load("models/trend_model.pkl")
-        models_loaded = True
+
+        models_dir = "models"
+        candidate_files = [
+            ("Tuned Logistic Regression", os.path.join(models_dir, "tuned_logistic_regression_model.pkl")),
+            ("Tuned Random Forest", os.path.join(models_dir, "tuned_random_forest_model.pkl")),
+            ("Tuned XGBoost", os.path.join(models_dir, "tuned_xgboost_model.pkl")),
+            ("Baseline Random Forest", os.path.join(models_dir, "rf_model.pkl")),
+        ]
+
+        available_models = {}
+        for display_name, path in candidate_files:
+            if os.path.exists(path):
+                try:
+                    available_models[display_name] = joblib.load(path)
+                except Exception:
+                    pass
+
+        default_model_name = None
+        tuned_report_path = os.path.join("reports", "model_comparison_tuned.csv")
+        if os.path.exists(tuned_report_path):
+            try:
+                comp_df = pd.read_csv(tuned_report_path)
+                if {"Model", "F1 Score"}.issubset(comp_df.columns):
+                    best_row = comp_df.sort_values("F1 Score", ascending=False).iloc[0]
+                    name_map = {
+                        "Tuned Logistic Regression": "Tuned Logistic Regression",
+                        "Tuned Random Forest": "Tuned Random Forest",
+                        "Tuned XGBoost": "Tuned XGBoost",
+                    }
+                    best_name_in_report = str(best_row["Model"]).strip()
+                    if best_name_in_report in name_map and name_map[best_name_in_report] in available_models:
+                        default_model_name = name_map[best_name_in_report]
+            except Exception:
+                pass
+
+        if default_model_name is None:
+            
+            for preferred in [
+                "Tuned Random Forest",
+                "Tuned Logistic Regression",
+                "Tuned XGBoost",
+                "Baseline Random Forest",
+            ]:
+                if preferred in available_models:
+                    default_model_name = preferred
+                    break
+
+        models_loaded = len(available_models) > 0 and anomaly_model is not None and trend_model is not None
     except Exception as e:
         st.error(f"⚠️ Error loading models: {str(e)}")
         st.info("Please ensure 'data/academic_cleaned.csv' and model files exist in the correct directories.")
@@ -222,11 +269,37 @@ if st.session_state.logged_in:
             inflation = st.slider("💹 Inflation Rate", 0.0, 10.0, 3.0)
             gdp = st.slider("🏦 GDP", 0.0, 200000.0, 100000.0)
             
+            model_names = list(available_models.keys()) if models_loaded else []
+            selected_model_name = None
+            selected_model = None
+            if model_names:
+                if len(model_names) == 1:
+                    selected_model_name = model_names[0]
+                    selected_model = available_models[selected_model_name]
+                else:
+                    try:
+                        default_index = model_names.index(default_model_name) if default_model_name in model_names else 0
+                    except Exception:
+                        default_index = 0
+                    with st.expander(f"⚙️ Advanced: Choose model (recommended: {default_model_name})", expanded=False):
+                        selected_model_name = st.selectbox("🤖 Select Model", model_names, index=default_index)
+                    selected_model = available_models[selected_model_name]
+
             if st.button("🔮 Predict Academic Outcome", use_container_width=True):
                 base_input = df.drop(columns=[col for col in df.columns if "Target" in col or col == "Grade"])
                 model_columns = base_input.columns.tolist()
                 input_template = pd.DataFrame(columns=model_columns)
-                input_template.loc[0] = 0
+                defaults = {}
+                for col in model_columns:
+                    try:
+                        if pd.api.types.is_numeric_dtype(df[col]):
+                            defaults[col] = float(df[col].median())
+                        else:
+                            mode_series = df[col].mode()
+                            defaults[col] = mode_series.iloc[0] if not mode_series.empty else df[col].iloc[0]
+                    except Exception:
+                        defaults[col] = 0
+                input_template.loc[0] = defaults
 
                 input_template["Age at enrollment"] = age
                 input_template["Admission grade"] = admission_grade
@@ -241,8 +314,11 @@ if st.session_state.logged_in:
 
                 input_template = input_template[model_columns]
 
-                prediction = model.predict(input_template)[0]
-                probabilities = model.predict_proba(input_template)[0]
+                for col in input_template.columns:
+                    if pd.api.types.is_integer_dtype(df[col]) and not pd.api.types.is_bool_dtype(df[col]):
+                        input_template[col] = np.round(input_template[col]).astype(df[col].dtype)
+                prediction = selected_model.predict(input_template)[0]
+                probabilities = selected_model.predict_proba(input_template)[0]
                 confidence = round(probabilities[prediction] * 100, 2)
                 label_map = {0: "Dropout", 1: "Enrolled", 2: "Graduate"}
                 result = label_map[prediction]
@@ -283,6 +359,7 @@ if st.session_state.logged_in:
                 ═══════════════════════════════════════
                 
                 Role: {role}
+                Model: {selected_model_name}
                 Prediction: {result}
                 Confidence: {confidence}%
                 Anomaly: {"Yes" if anomaly_model.predict(input_template)[0] == -1 else "No"}
@@ -358,6 +435,93 @@ if st.session_state.logged_in:
                          title="GDP vs Admission Grade", trendline="ols")
             st.plotly_chart(fig_gdp, use_container_width=True)
             # st.download_button("📥 Download GDP Chart", fig_gdp.to_image(format="png"), file_name="gdp_chart.png")            
+
+            st.markdown("#### 🔹 Correlation Heatmap (Numeric Features)")
+            numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+            if len(numeric_cols) > 1:
+                corr_matrix = df[numeric_cols].corr().round(2)
+                fig_corr = px.imshow(
+                    corr_matrix,
+                    text_auto=True,
+                    color_continuous_scale="RdBu",
+                    zmin=-1,
+                    zmax=1,
+                    title="Feature Correlations",
+                )
+                st.plotly_chart(fig_corr, use_container_width=True)
+
+            st.markdown("#### 🔹 3D Performance Scatter")
+            if all(c in df.columns for c in [
+                "Admission grade", "Curricular units 1st sem (grade)", "Curricular units 2nd sem (grade)"
+            ]):
+                fig_3d = px.scatter_3d(
+                    df,
+                    x="Admission grade",
+                    y="Curricular units 1st sem (grade)",
+                    z="Curricular units 2nd sem (grade)",
+                    color="Grade",
+                    title="Admission vs Sem-1 vs Sem-2 Grades (3D)",
+                )
+                fig_3d.update_traces(marker=dict(size=4, opacity=0.85), selector=dict(type='scatter3d'))
+                fig_3d.update_layout(scene=dict(
+                    xaxis_title='Admission grade',
+                    yaxis_title='Sem-1 grade',
+                    zaxis_title='Sem-2 grade'
+                ))
+                st.plotly_chart(fig_3d, use_container_width=True)
+
+            st.markdown("#### 🔹 Dropout Heatmap by Age Group and Scholarship")
+            if "Age Group" in df.columns and "Scholarship Label" in df.columns:
+                dropout_df = df.copy()
+                dropout_df["is_dropout"] = (dropout_df["Grade"] == "Dropout").astype(int)
+                pivot = dropout_df.pivot_table(
+                    index="Age Group", columns="Scholarship Label", values="is_dropout", aggfunc="mean"
+                ).reindex(index=["17–20", "21–25", "26–30", "31–40", "41+"], columns=["Yes", "No"]) * 100
+                fig_dropout_heat = px.imshow(
+                    pivot,
+                    text_auto=True,
+                    color_continuous_scale="YlOrRd",
+                    origin="upper",
+                    labels=dict(color="Dropout %"),
+                    title="Dropout % by Age Group × Scholarship",
+                )
+                st.plotly_chart(fig_dropout_heat, use_container_width=True)
+
+            st.markdown("#### 🔹 Course-wise Grade Distribution (Normalized)")
+            if all(c in df.columns for c in ["Course", "Grade"]):
+                ct = pd.crosstab(df["Course"], df["Grade"], normalize="index").reset_index()
+                course_grade = ct.melt(id_vars="Course", var_name="Grade", value_name="ratio")
+                fig_course_stack = px.bar(
+                    course_grade,
+                    x="Course",
+                    y="ratio",
+                    color="Grade",
+                    title="Normalized Distribution of Grades by Course",
+                )
+                fig_course_stack.update_layout(barmode="stack", yaxis_tickformat=",.0%")
+                st.plotly_chart(fig_course_stack, use_container_width=True)
+
+            st.markdown("#### 🔹 Admission Grade Distribution by Outcome (Violin)")
+            if all(c in df.columns for c in ["Admission grade", "Grade"]):
+                fig_violin = px.violin(
+                    df, y="Admission grade", x="Grade", color="Grade",
+                    box=True, points="outliers",
+                    title="Admission Grade Distribution by Outcome"
+                )
+                st.plotly_chart(fig_violin, use_container_width=True)
+
+            st.markdown("#### 🔹 Pathways: Gender → Scholarship → Outcome")
+            if all(c in df.columns for c in ["Gender", "Scholarship Label", "Grade"]):
+                fig_parallel = px.parallel_categories(
+                    df[["Gender", "Scholarship Label", "Grade"]],
+                    color=df["Grade"].astype("category").cat.codes,
+                    color_continuous_scale=px.colors.sequential.Teal,
+                    labels={"Gender": "Gender", "Scholarship Label": "Scholarship", "Grade": "Outcome"},
+                    title="Parallel Categories: Gender → Scholarship → Outcome"
+                )
+                st.plotly_chart(fig_parallel, use_container_width=True)
+
+            st.caption("All charts are interactive. Use hover, zoom, pan, and legend toggles for deeper insights.")
 
         st.markdown("---")
         if role == "Student":
