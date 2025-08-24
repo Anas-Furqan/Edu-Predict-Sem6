@@ -98,6 +98,21 @@ EduPredict_Project/
 
 ## 📦 How to Run Locally
 
+### Option 1: Standard Run (with warning suppression)
+```bash
+streamlit run app/edu_predict_app.py
+```
+
+### Option 2: Clean Run (no warnings)
+```bash
+python run_app_clean.py
+```
+
+### Option 3: Retrain Models (if you encounter version warnings)
+```bash
+python retrain_models.py
+```
+
 > Make sure you have Python 3.10+ and pip installed.
 
 1. **Clone this repository or unzip it:**
